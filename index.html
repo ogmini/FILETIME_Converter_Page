@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DateTime Input Handler</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 200px;
+            padding: 5px;
+        }
+        .error {
+            color: red;
+            display: none;
+            margin-top: 5px;
+        }
+        .description {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .description ul {
+            margin-top: 5px;
+            margin-bottom: 0;
+        }
+        .description p {
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .description p:last-child {
+            margin-bottom: 0;
+        }
+        .or-divider {
+            text-align: center;
+            margin: 30px 0;
+            position: relative;
+        }
+        .or-divider:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            border-top: 1px solid #ccc;
+        }
+        .or-divider span {
+            background: #fff;
+            padding: 0 10px;
+            color: #666;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <h1>FILETIME Converter</h1>
+    
+    <div class="description">
+        <p>
+            This tool converts Windows FILETIME values to human-readable dates. A FILETIME structure represents 
+            the number of 100-nanosecond intervals that have elapsed since 12:00 A.M. January 1, 1601, in Coordinated Universal Time (UTC).
+        </p>
+        <p>
+            Instructions:
+            <ul>
+                <li>Either enter the dwLowDateTime and dwHighDateTime values from your FILETIME structure</li>
+                <li>Or enter a single 64-bit value (can be decimal or hexadecimal with 0x prefix)</li>
+                <li>Values can be either signed or unsigned</li>
+                <li>The converter will show both the original input and its unsigned equivalent</li>
+                <li>Results are displayed in UTC, local time, and ISO format</li>
+            </ul>
+        </p>
+    </div>
+
+    <form id="dateTimeForm" onsubmit="handleSubmit(event)">
+        <div class="input-group">
+            <label for="lowDateTime">dwLowDateTime (32-bit signed int):</label>
+            <input type="number" id="lowDateTime" name="lowDateTime"
+                   min="-2147483648" max="2147483647" step="1">
+            <div id="lowError" class="error">Please enter a valid 32-bit integer (-2147483648 to 2147483647)</div>
+        </div>
+        
+        <div class="input-group">
+            <label for="highDateTime">dwHighDateTime (32-bit signed int):</label>
+            <input type="number" id="highDateTime" name="highDateTime"
+                   min="-2147483648" max="2147483647" step="1">
+            <div id="highError" class="error">Please enter a valid 32-bit integer (-2147483648 to 2147483647)</div>
+        </div>
+
+        <div class="or-divider">
+            <span>OR</span>
+        </div>
+
+        <div class="input-group">
+            <label for="fullDateTime">Full FILETIME value (64-bit):</label>
+            <input type="text" id="fullDateTime" name="fullDateTime" 
+                   placeholder="Enter decimal or hex (0x prefix)">
+            <div id="fullError" class="error">Please enter a valid 64-bit integer or hex value</div>
+        </div>
+
+        <button type="submit">Convert</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        function handleSubmit(event) {
+            event.preventDefault();
+            
+            const lowDateTime = document.getElementById('lowDateTime').value;
+            const highDateTime = document.getElementById('highDateTime').value;
+            const fullDateTime = document.getElementById('fullDateTime').value;
+            
+            const lowError = document.getElementById('lowError');
+            const highError = document.getElementById('highError');
+            const fullError = document.getElementById('fullError');
+            
+            // Reset error displays
+            lowError.style.display = 'none';
+            highError.style.display = 'none';
+            fullError.style.display = 'none';
+            
+            let fileTime;
+            let hasError = false;
+
+            // Check if using full value or high/low components
+            if (fullDateTime) {
+                try {
+                    const value = fullDateTime.toLowerCase().startsWith('0x') 
+                        ? BigInt(fullDateTime)
+                        : BigInt(fullDateTime);
+                    fileTime = convertFullFileTimeToDate(value);
+                } catch (e) {
+                    fullError.style.display = 'block';
+                    hasError = true;
+                }
+            } else if (lowDateTime || highDateTime) {
+                if (!lowDateTime || !highDateTime) {
+                    lowError.style.display = 'block';
+                    highError.style.display = 'block';
+                    hasError = true;
+                } else if (!isValidInt32(lowDateTime)) {
+                    lowError.style.display = 'block';
+                    hasError = true;
+                } else if (!isValidInt32(highDateTime)) {
+                    highError.style.display = 'block';
+                    hasError = true;
+                } else {
+                    fileTime = convertFileTimeToDate(
+                        convertToUint32(highDateTime),
+                        convertToUint32(lowDateTime)
+                    );
+                }
+            } else {
+                lowError.style.display = 'block';
+                highError.style.display = 'block';
+                hasError = true;
+            }
+            
+            if (!hasError) {
+                let resultHtml = `<h3>Valid Input Received:</h3>`;
+                
+                if (fullDateTime) {
+                    resultHtml += `<p>Full FILETIME: ${fullDateTime}</p>`;
+                } else {
+                    resultHtml += `
+                        <p>dwLowDateTime: ${lowDateTime} (unsigned: ${convertToUint32(lowDateTime)})</p>
+                        <p>dwHighDateTime: ${highDateTime} (unsigned: ${convertToUint32(highDateTime)})</p>
+                    `;
+                }
+
+                resultHtml += `
+                    <p>DateTime (UTC): ${fileTime.toUTCString()}</p>
+                    <p>DateTime (Local): ${fileTime.toString()}</p>
+                    <p>ISO Format: ${fileTime.toISOString()}</p>
+                `;
+                
+                document.getElementById('result').innerHTML = resultHtml;
+            }
+        }
+
+        function isValidInt32(value) {
+            const num = Number(value);
+            return Number.isInteger(num) && num >= -2147483648 && num <= 2147483647;
+        }
+
+        function convertToUint32(value) {
+            // Convert signed int32 to unsigned int32
+            return BigInt(value >>> 0);
+        }
+
+        function convertFileTimeToDate(highDateTime, lowDateTime) {
+            // Combine high and low parts into a single BigInt
+            // Shift high part left by 32 bits and add low part
+            const fileTime = (highDateTime << BigInt(32)) | lowDateTime;
+            
+            // Convert from 100-nanosecond intervals to milliseconds
+            // and adjust from FILETIME epoch (1601-01-01) to Unix epoch (1970-01-01)
+            const FILETIME_EPOCH_DIFF = BigInt(116444736000000000); // Difference in 100-nanosecond intervals
+            const nanosToMillis = BigInt(10000); // Convert 100-nanosecond intervals to milliseconds
+            
+            const unixTimeMs = Number((fileTime - FILETIME_EPOCH_DIFF) / nanosToMillis);
+            
+            return new Date(unixTimeMs);
+        }
+
+        function convertFullFileTimeToDate(fileTime) {
+            // Convert from 100-nanosecond intervals to milliseconds
+            // and adjust from FILETIME epoch (1601-01-01) to Unix epoch (1970-01-01)
+            const FILETIME_EPOCH_DIFF = BigInt(116444736000000000);
+            const nanosToMillis = BigInt(10000);
+            
+            const unixTimeMs = Number((fileTime - FILETIME_EPOCH_DIFF) / nanosToMillis);
+            
+            return new Date(unixTimeMs);
+        }
+    </script>
+</body>
+</html> 
