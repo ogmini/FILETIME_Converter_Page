@@ -70,17 +70,24 @@
     
     <div class="description">
         <p>
-            This tool converts Windows FILETIME values to human-readable dates. A FILETIME structure represents 
-            the number of 100-nanosecond intervals that have elapsed since 12:00 A.M. January 1, 1601, in Coordinated Universal Time (UTC).
+            This tool converts Windows FILETIME timestamps into human-readable dates. FILETIME is a Windows-specific 
+            format that counts the number of 100-nanosecond intervals since January 1, 1601 (UTC).
         </p>
         <p>
-            Instructions:
+            You can convert a FILETIME using either:
             <ul>
-                <li>Either enter the dwLowDateTime and dwHighDateTime values from your FILETIME structure</li>
-                <li>Or enter a single 64-bit value (can be decimal or hexadecimal with 0x prefix)</li>
-                <li>Values can be either signed or unsigned</li>
-                <li>The converter will show both the original input and its unsigned equivalent</li>
-                <li>Results are displayed in UTC, local time, and ISO format</li>
+                <li><strong>Method 1:</strong> Enter both components of a FILETIME structure:
+                    <ul>
+                        <li>dwLowDateTime - The low-order 32 bits</li>
+                        <li>dwHighDateTime - The high-order 32 bits</li>
+                    </ul>
+                </li>
+                <li><strong>Method 2:</strong> Enter the complete FILETIME value as:
+                    <ul>
+                        <li>A decimal number (e.g., 132723834270000000)</li>
+                        <li>A hexadecimal number with 0x prefix (e.g., 0x1D6A9BE1A7E8000)</li>
+                    </ul>
+                </li>
             </ul>
         </p>
     </div>
